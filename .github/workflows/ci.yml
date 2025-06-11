@@ -1,28 +1,48 @@
-name: ci
+name: Build
 
 on:
   push:
-    branches:
-      - main
-  schedule:
-    - cron: "0 0 * * *"
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
-  autogreen:
+  build:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: write
-  
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
 
-      - name: Auto green
-        run: |
-          git config --local user.email "3472449264@qq.com"
-          git config --local user.name "${{ github.actor }}"
-          git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git pull --rebase
-          git commit --allow-empty -m "a commit a day keeps your girlfriend away"
-          git push
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload module
+        uses: actions/upload-artifact@v4
+        with:
+          name: module
+          path: module/build/outputs/apk/release/module-release.apk
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List downloaded files
+        run: ls -R artifacts
